@@ -106,8 +106,14 @@ export async function POST(request: NextRequest) {
                     ],
                   },
                 };
+                controller.enqueue(
+                  encoder.encode(
+                    JSON.stringify({ error: errorResponse }) + "\n"
+                  )
+                );
+                controller.close();
 
-                return NextResponse.json(errorResponse, { status: 400 });
+                return;
               }
 
               // Validate: CSV must have a LABEL column
@@ -121,8 +127,14 @@ export async function POST(request: NextRequest) {
                     ],
                   },
                 };
+                controller.enqueue(
+                  encoder.encode(
+                    JSON.stringify({ error: errorResponse }) + "\n"
+                  )
+                );
+                controller.close();
 
-                return NextResponse.json(errorResponse, { status: 400 });
+                return;
               }
 
               const parsedData: ParsedCSVData = {

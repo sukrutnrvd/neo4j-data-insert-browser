@@ -142,10 +142,19 @@ export default function Home() {
             }
 
             if (data.error) {
-              const errorData = data.error as UploadNodeErrorResponse["error"];
-              const errorMessage = errorData.details
+              console.log("Raw error data:", data.error);
+              // Backend sends { error: { error: { message, details } } }
+              // We need to access the inner error object
+              const errorResponse = data.error as UploadNodeErrorResponse;
+              const errorData = errorResponse.error;
+              console.log("Error data message:", errorData?.message);
+              console.log("Error data details:", errorData?.details);
+
+              const errorMessage = errorData?.details
                 ? `${errorData.message}\n${errorData.details.join("\n")}`
-                : errorData.message;
+                : errorData?.message || "Unknown error";
+
+              console.error("Server error:", errorMessage);
               throw new Error(errorMessage);
             }
 
@@ -163,10 +172,35 @@ export default function Home() {
           }
         }
       }
+
+      // If we reached here without setting success/error status, something went wrong
+      if (uploadStatus === "uploading") {
+        throw new Error("Upload completed but no response received");
+      }
     } catch (error) {
       console.error("Upload error:", error);
-      setUploadError(error instanceof Error ? error.message : "Upload failed");
-      setUploadStatus("error");
+      console.log("Error type:", typeof error);
+      console.log("Error is Error instance?", error instanceof Error);
+
+      let errorMessage = "Upload failed";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error && typeof error === "object") {
+        errorMessage = JSON.stringify(error);
+      }
+
+      console.log("Setting error message:", errorMessage);
+
+      // Set error state and status together
+      setUploadError(errorMessage);
+      setProgress(0);
+
+      // Small delay to ensure error state is set before showing modal
+      setTimeout(() => {
+        setUploadStatus("error");
+      }, 50);
     }
   };
 
@@ -230,11 +264,20 @@ export default function Home() {
             }
 
             if (data.error) {
-              const errorData =
-                data.error as UploadRelationshipErrorResponse["error"];
-              const errorMessage = errorData.details
+              console.log("Raw error data:", data.error);
+              // Backend sends { error: { error: { message, details } } }
+              // We need to access the inner error object
+              const errorResponse =
+                data.error as UploadRelationshipErrorResponse;
+              const errorData = errorResponse.error;
+              console.log("Error data message:", errorData?.message);
+              console.log("Error data details:", errorData?.details);
+
+              const errorMessage = errorData?.details
                 ? `${errorData.message}\n${errorData.details.join("\n")}`
-                : errorData.message;
+                : errorData?.message || "Unknown error";
+
+              console.error("Server error:", errorMessage);
               throw new Error(errorMessage);
             }
 
@@ -252,10 +295,35 @@ export default function Home() {
           }
         }
       }
+
+      // If we reached here without setting success/error status, something went wrong
+      if (uploadStatus === "uploading") {
+        throw new Error("Upload completed but no response received");
+      }
     } catch (error) {
       console.error("Upload error:", error);
-      setUploadError(error instanceof Error ? error.message : "Upload failed");
-      setUploadStatus("error");
+      console.log("Error type:", typeof error);
+      console.log("Error is Error instance?", error instanceof Error);
+
+      let errorMessage = "Upload failed";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error && typeof error === "object") {
+        errorMessage = JSON.stringify(error);
+      }
+
+      console.log("Setting error message:", errorMessage);
+
+      // Set error state and status together
+      setUploadError(errorMessage);
+      setProgress(0);
+
+      // Small delay to ensure error state is set before showing modal
+      setTimeout(() => {
+        setUploadStatus("error");
+      }, 50);
     }
   };
 
