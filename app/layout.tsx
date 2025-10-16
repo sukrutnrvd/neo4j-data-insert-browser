@@ -32,6 +32,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const serverUrl = process.env.NEO4J_SERVER_URL;
+
   return (
     <html suppressHydrationWarning lang="en">
       <head />
@@ -42,7 +44,7 @@ export default function RootLayout({
         )}
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
-          <Neo4jConnectionModal />
+          <Neo4jConnectionModal serverUrl={serverUrl} />
           <ProtectedContent>
             <div className="relative flex flex-col h-screen">
               <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">

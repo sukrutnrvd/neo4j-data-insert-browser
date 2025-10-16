@@ -4,6 +4,10 @@ import type {
   CheckConnectionErrorResponse,
   CheckConnectionResponse,
 } from "@/app/api/check-connection";
+import type {
+  ConnectionFormData,
+  Neo4jConnectionModalProps,
+} from "./neo4j-connection-modal.types";
 import {
   Modal,
   ModalBody,
@@ -13,13 +17,14 @@ import {
 } from "@heroui/modal";
 
 import { Button } from "@heroui/button";
-import { ConnectionFormData } from "./neo4j-connection-modal.types";
 import { Input } from "@heroui/input";
 import { useForm } from "react-hook-form";
 import { useNeo4jConnection } from "@/store/neo4j-connection";
 import { useState } from "react";
 
-export const Neo4jConnectionModal = () => {
+export const Neo4jConnectionModal: React.FC<Neo4jConnectionModalProps> = ({
+  serverUrl = "",
+}) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState("");
   const { isConnected, setConnection } = useNeo4jConnection();
@@ -31,7 +36,7 @@ export const Neo4jConnectionModal = () => {
   } = useForm<ConnectionFormData>({
     defaultValues: {
       username: "neo4j",
-      connectionUrl: "",
+      connectionUrl: serverUrl,
       password: "",
     },
   });

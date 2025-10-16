@@ -11,6 +11,14 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { Tab, Tabs } from "@heroui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
 import type {
   UploadNodeErrorResponse,
   UploadNodeResponse,
@@ -19,17 +27,28 @@ import type {
   UploadRelationshipErrorResponse,
   UploadRelationshipResponse,
 } from "@/app/api/upload-relationship";
+import { useCallback, useState } from "react";
 
 import { Button } from "@heroui/button";
+import Papa from "papaparse";
 import { Progress } from "@heroui/progress";
 import { useNeo4jConnection } from "@/store/neo4j-connection";
-import { useState } from "react";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
+
+interface FilePreview {
+  fileName: string;
+  headers: string[];
+  rows: string[][];
+}
 
 export default function Home() {
   const [nodeFiles, setNodeFiles] = useState<UploadedFile[]>([]);
   const [relationshipFiles, setRelationshipFiles] = useState<UploadedFile[]>(
+    []
+  );
+  const [nodePreview, setNodePreview] = useState<FilePreview[]>([]);
+  const [relationshipPreview, setRelationshipPreview] = useState<FilePreview[]>(
     []
   );
   const [selectedTab, setSelectedTab] = useState<string>("nodes");
@@ -67,11 +86,13 @@ export default function Home() {
 
   const handleConfirmTabChange = () => {
     if (pendingTab) {
-      // Clear current tab's files
+      // Clear current tab's files and preview
       if (selectedTab === "nodes") {
         setNodeFiles([]);
+        setNodePreview([]);
       } else {
         setRelationshipFiles([]);
+        setRelationshipPreview([]);
       }
       setSelectedTab(pendingTab);
       setPendingTab(null);
@@ -81,6 +102,63 @@ export default function Home() {
   const handleCancelTabChange = () => {
     setPendingTab(null);
   };
+
+  const parseFileForPreview = useCallback(
+    (files: UploadedFile[], setPreview: (previews: FilePreview[]) => void) => {
+      const previews: FilePreview[] = [];
+      let parsedCount = 0;
+
+      files.forEach((uploadedFile) => {
+        Papa.parse(uploadedFile.file, {
+          header: true,
+          preview: 5, // Only parse first 5 rows
+          skipEmptyLines: true,
+          complete: (results) => {
+            const headers = results.meta.fields || [];
+            const rows = results.data.map((row: any) =>
+              headers.map((header) => row[header] || "")
+            );
+
+            previews.push({
+              fileName: uploadedFile.file.name,
+              headers,
+              rows,
+            });
+
+            parsedCount++;
+            if (parsedCount === files.length) {
+              setPreview(previews);
+            }
+          },
+        });
+      });
+    },
+    []
+  );
+
+  const handleNodeFilesChange = useCallback(
+    (files: UploadedFile[]) => {
+      setNodeFiles(files);
+      if (files.length > 0) {
+        parseFileForPreview(files, setNodePreview);
+      } else {
+        setNodePreview([]);
+      }
+    },
+    [parseFileForPreview]
+  );
+
+  const handleRelationshipFilesChange = useCallback(
+    (files: UploadedFile[]) => {
+      setRelationshipFiles(files);
+      if (files.length > 0) {
+        parseFileForPreview(files, setRelationshipPreview);
+      } else {
+        setRelationshipPreview([]);
+      }
+    },
+    [parseFileForPreview]
+  );
 
   const handleSubmitNodes = async () => {
     setUploadType("nodes");
@@ -330,12 +408,14 @@ export default function Home() {
   const handleCloseProgressModal = () => {
     setUploadStatus("idle");
     setProgress(0);
-    // Clear files after successful upload
+    // Clear files and preview after successful upload
     if (uploadStatus === "success") {
       if (uploadType === "nodes") {
         setNodeFiles([]);
+        setNodePreview([]);
       } else {
         setRelationshipFiles([]);
+        setRelationshipPreview([]);
       }
     }
   };
@@ -425,16 +505,28 @@ export default function Home() {
                         <li>
                           All other columns will be used as node properties
                         </li>
-
                         <li>
                           We recommend using the <strong>id</strong> column as
                           the node identifier because if you plan to upload
                           relationships, you will need to use the id column to
                           identify the nodes.
                         </li>
+                        <li>
+                          For JSON values (arrays/objects), use double quotes
+                          and escape inner quotes with{" "}
+                          <code className="px-1 bg-warning-200 rounded">
+                            ""
+                          </code>
+                        </li>
                       </ul>
-                      <div className="mt-3 p-2 bg-warning-100 rounded text-xs font-mono text-warning-900">
-                        Example: LABEL,id,name,age
+                      <div className="mt-3 p-2 bg-warning-100 rounded text-xs font-mono text-warning-900 overflow-x-auto">
+                        <div className="mb-1">Example with simple values:</div>
+                        <div className="mb-2">LABEL,id,name,age</div>
+                        <div className="mb-1">Example with JSON values:</div>
+                        <div>id,LABEL,skills,metadata</div>
+                        <div>
+                          1,Person,&quot;[&quot;&quot;JavaScript&quot;&quot;,&quot;&quot;React&quot;&quot;]&quot;,&quot;&#123;&quot;&quot;city&quot;&quot;:&quot;&quot;Istanbul&quot;&quot;&#125;&quot;
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -450,8 +542,57 @@ export default function Home() {
                   maxSize={50 * 1024 * 1024} // 50MB
                   multiple={true}
                   showPreview={false}
-                  onFilesChange={setNodeFiles}
+                  onFilesChange={handleNodeFilesChange}
                 />
+
+                {/* File Preview */}
+                {nodePreview.length > 0 && (
+                  <div className="mt-6 space-y-4">
+                    <h3 className="text-lg font-semibold">
+                      Data Preview (First 5 rows)
+                    </h3>
+                    {nodePreview.map((preview, idx) => (
+                      <div
+                        key={idx}
+                        className="border border-default-200 rounded-lg overflow-hidden"
+                      >
+                        <div className="bg-default-100 px-4 py-2 font-semibold text-sm">
+                          {preview.fileName}
+                        </div>
+                        <div className="overflow-x-auto">
+                          <Table
+                            aria-label={`Preview of ${preview.fileName}`}
+                            className="min-w-full"
+                            isCompact
+                            removeWrapper
+                          >
+                            <TableHeader>
+                              {preview.headers.map((header, headerIdx) => (
+                                <TableColumn key={headerIdx}>
+                                  {header}
+                                </TableColumn>
+                              ))}
+                            </TableHeader>
+                            <TableBody>
+                              {preview.rows.map((row, rowIdx) => (
+                                <TableRow key={rowIdx}>
+                                  {row.map((cell, cellIdx) => (
+                                    <TableCell
+                                      key={cellIdx}
+                                      className="text-xs max-w-xs truncate"
+                                    >
+                                      {cell}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {nodeFiles.length > 0 && (
                   <>
@@ -575,11 +716,20 @@ export default function Home() {
                         <li>
                           All other columns will be relationship properties
                         </li>
+                        <li>
+                          For JSON values (arrays/objects), use double quotes
+                          and escape inner quotes with{" "}
+                          <code className="px-1 bg-warning-200 rounded">
+                            ""
+                          </code>
+                        </li>
                       </ul>
-                      <div className="mt-3 p-2 bg-warning-100 rounded text-xs font-mono text-warning-900">
-                        Example: TYPE,FROM_LABEL,FROM_ID,TO_LABEL,TO_ID,since
-                        <br />
-                        WORKS_AT,Person,1,Company,10,2020
+                      <div className="mt-3 p-2 bg-warning-100 rounded text-xs font-mono text-warning-900 overflow-x-auto">
+                        <div className="mb-1">Example:</div>
+                        <div className="mb-1">
+                          TYPE,FROM_LABEL,FROM_ID,TO_LABEL,TO_ID,since
+                        </div>
+                        <div>WORKS_AT,Person,1,Company,10,2020</div>
                       </div>
                     </div>
                   </div>
@@ -595,8 +745,57 @@ export default function Home() {
                   maxSize={50 * 1024 * 1024} // 50MB
                   multiple={true}
                   showPreview={false}
-                  onFilesChange={setRelationshipFiles}
+                  onFilesChange={handleRelationshipFilesChange}
                 />
+
+                {/* File Preview */}
+                {relationshipPreview.length > 0 && (
+                  <div className="mt-6 space-y-4">
+                    <h3 className="text-lg font-semibold">
+                      Data Preview (First 5 rows)
+                    </h3>
+                    {relationshipPreview.map((preview, idx) => (
+                      <div
+                        key={idx}
+                        className="border border-default-200 rounded-lg overflow-hidden"
+                      >
+                        <div className="bg-default-100 px-4 py-2 font-semibold text-sm">
+                          {preview.fileName}
+                        </div>
+                        <div className="overflow-x-auto">
+                          <Table
+                            aria-label={`Preview of ${preview.fileName}`}
+                            className="min-w-full"
+                            isCompact
+                            removeWrapper
+                          >
+                            <TableHeader>
+                              {preview.headers.map((header, headerIdx) => (
+                                <TableColumn key={headerIdx}>
+                                  {header}
+                                </TableColumn>
+                              ))}
+                            </TableHeader>
+                            <TableBody>
+                              {preview.rows.map((row, rowIdx) => (
+                                <TableRow key={rowIdx}>
+                                  {row.map((cell, cellIdx) => (
+                                    <TableCell
+                                      key={cellIdx}
+                                      className="text-xs max-w-xs truncate"
+                                    >
+                                      {cell}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {relationshipFiles.length > 0 && (
                   <>
