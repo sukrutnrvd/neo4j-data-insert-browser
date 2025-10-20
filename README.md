@@ -1,52 +1,74 @@
-# Next.js & HeroUI Template
+# Neo4j Bulk Insert Browser
 
-This is a template for creating applications using Next.js 14 (app directory) and HeroUI (v2).
-
-[Try it on CodeSandbox](https://githubbox.com/heroui-inc/heroui/next-app-template)
+This is a web-based tool for bulk-importing data into a Neo4j database from CSV files. It provides a user-friendly interface to upload nodes and relationships separately, with clear guidelines on the required CSV format.
 
 ## Technologies Used
 
 - [Next.js 14](https://nextjs.org/docs/getting-started)
 - [HeroUI v2](https://heroui.com/)
 - [Tailwind CSS](https://tailwindcss.com/)
-- [Tailwind Variants](https://tailwind-variants.org)
 - [TypeScript](https://www.typescriptlang.org/)
-- [Framer Motion](https://www.framer.com/motion/)
-- [next-themes](https://github.com/pacocoursey/next-themes)
+- [Zustand](https://github.com/pmndrs/zustand) for state management
+- [PapaParse](https://www.papaparse.com/) for CSV parsing
+- [React Dropzone](https://react-dropzone.js.org/) for file uploads
+- [Neo4j Driver](https://neo4j.com/docs/javascript-manual/current/driver-quickstart/)
 
 ## How to Use
 
-### Use the template with create-next-app
-
-To create a new project based on this template using `create-next-app`, run the following command:
-
-```bash
-npx create-next-app -e https://github.com/heroui-inc/next-app-template
-```
-
 ### Install dependencies
 
-You can use one of them `npm`, `yarn`, `pnpm`, `bun`, Example using `npm`:
+You can use one of them `npm`, `yarn`, `pnpm`, `bun`, Example using `yarn`:
 
 ```bash
-npm install
+yarn install
 ```
 
 ### Run the development server
 
 ```bash
-npm run dev
+yarn dev
 ```
 
-### Setup pnpm (optional)
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
+### Setup Neo4j Connection
 
-```bash
-public-hoist-pattern[]=*@heroui/*
+Before uploading data, you need to provide your Neo4j database credentials. Click on the "Connect to Neo4j" button and enter your database URL, username, and password.
+
+### Data Upload
+
+The application has two main tabs: "Upload Nodes" and "Upload Relationships".
+
+#### Node CSV Format
+
+- The CSV file **must have a header row**.
+- One column **must be named "LABEL"** - this will be used as the node label.
+- It is recommended to have an `id` column to uniquely identify nodes, which is necessary for creating relationships later.
+- All other columns will be treated as node properties.
+
+**Example:**
+
+```csv
+id,LABEL,name,age
+1,Person,"John Doe",30
+2,Company,"Neo4j",20
 ```
 
-After modifying the `.npmrc` file, you need to run `pnpm install` again to ensure that the dependencies are installed correctly.
+#### Relationship CSV Format
+
+- The CSV file **must have a header row**.
+- **Required columns**: `TYPE`, `FROM_LABEL`, `FROM_ID`, `TO_LABEL`, `TO_ID`.
+- `TYPE`: The type of the relationship (e.g., `WORKS_AT`).
+- `FROM_LABEL` & `FROM_ID`: The label and ID of the source node.
+- `TO_LABEL` & `TO_ID`: The label and ID of the target node.
+- All other columns will be treated as relationship properties.
+
+**Example:**
+
+```csv
+TYPE,FROM_LABEL,FROM_ID,TO_LABEL,TO_ID,since
+WORKS_AT,Person,1,Company,2,2022
+```
 
 ## License
 
